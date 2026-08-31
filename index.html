@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musical Sounds</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <!-- Lightweight Confetti library for victory celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Hunt Puzzle Header Card -->
+    <header class="hunt-header">
+      <div class="header-top">
+        <div class="puzzle-title-group">
+          <h1 class="puzzle-title" id="puzzle-title">Musical Sounds</h1>
+        </div>
+        <div class="header-controls">
+          <select id="puzzle-select" class="puzzle-select" title="Switch Puzzle Preset">
+            <!-- Populated dynamically if multiple puzzles exist in puzzle-config.js -->
+          </select>
+          <button id="theme-toggle" class="theme-toggle" title="Toggle Light/Dark Theme">🌙 Dark</button>
+          <button id="reveal-hint-btn" class="btn-secondary" style="display:none; padding:6px 12px; font-size:0.82rem;">
+            💡 Hint
+          </button>
+        </div>
+      </div>
+      
+      <p class="flavor-text" id="flavor-text">
+        What are they singing? It looks like English titles but I can't fully understand the lyrics.
+      </p>
+
+      <!-- Top Answer Submission Checker (Hunt Style) -->
+      <div class="top-answer-section">
+        <form id="answer-form" class="top-answer-form">
+          <div class="top-answer-input-wrapper">
+            <span class="answer-label">SUBMIT ANSWER:</span>
+            <input 
+              type="text" 
+              id="answer-input" 
+              class="answer-input top-input" 
+              placeholder="ENTER FINAL ANSWER..." 
+              autocomplete="off" 
+              spellcheck="false"
+            >
+            <button type="submit" class="btn-primary">
+              Submit
+            </button>
+          </div>
+          <div class="answer-feedback" id="answer-feedback"></div>
+        </form>
+      </div>
+
+      <div id="hints-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    </header>
+
+    <!-- MAIN PLAY VIEW (ALL 8 BOARDS IN A SINGLE COLUMN) -->
+    <main id="play-view" class="game-layout-centered">
+      <div class="boards-column" id="boards-column">
+        <!-- All 8 boards dynamically mounted here in a single continuous column -->
+      </div>
+    </main>
+    <!-- Color Legend Section -->
+    <section id="color-legend" class="color-legend" style="margin-top:24px; padding:12px; border:1px solid var(--border-subtle); border-radius:12px; background:var(--bg-primary);">
+      <div class="color-rows">
+        <div class="color-row"><span class="color-swatch" style="background:#FF1F7A;"></span> -> ?(2)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#FF8D1A;"></span> -> ?(3)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#008080;"></span> -> ?(5)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#0056B3;"></span> -> ?(7)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#FF6F61;"></span> -> ?(2)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#28B463;"></span> -> ?(4)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#FF5733;"></span> -> ?(5)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#00BFFF;"></span> -> ?(3)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#A8D000;"></span> -> ?(4)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#8A2BE2;"></span> -> ?(1)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#FFD700;"></span> -> ?(1)</div>
+        <div class="color-row"><span class="color-swatch" style="background:#FFC300;"></span> -> ?(6)</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- VICTORY MODAL -->
+  <div class="modal-overlay" id="victory-modal">
+    <div class="modal-card">
+      <div class="victory-icon">🏆</div>
+      <h2 class="victory-title">PUZZLE SOLVED!</h2>
+      <p style="color:var(--text-muted); font-size:0.95rem;">
+        Congratulations! You mapped all chamber paths and unlocked the secret final keyword:
+      </p>
+      <div class="victory-solution" id="modal-solution">OCTAHEDRON</div>
+      <button class="btn-primary" id="modal-close-btn" style="margin-top:10px;">
+        Return to Boards
+      </button>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script>
+    // Ensure puzzle-config.js always loads freshly without browser caching
+    document.write('<script src="puzzle-config.js?v=' + Date.now() + '"><\/script>');
+  </script>
+  <script src="js/wend-engine.js"></script>
+  <script src="js/hunt-ui.js"></script>
+
+  <script>
+    // Bootstrapping the application
+    document.addEventListener("DOMContentLoaded", () => {
+      const boardsContainer = document.getElementById("boards-column");
+      let uiController;
+
+      // Instantiate Wend Multi-Board Manager
+      const multiBoardManager = new WendMultiBoardManager(boardsContainer, {
+        onWordFound: (wObj, path, bInst) => {
+          if (uiController) uiController.handleWordFound(wObj, path, bInst);
+        },
+        onWordRemoved: (wObj, bInst) => {
+          if (uiController) uiController.handleWordRemoved(wObj, bInst);
+        },
+        onBoardComplete: (bInst) => {
+          if (uiController) uiController.handleBoardComplete(bInst);
+        },
+        onAllBoardsComplete: () => {
+          if (uiController) uiController.handleAllBoardsComplete();
+        }
+      });
+
+      // Instantiate Hunt UI Controller
+      uiController = new HuntUIController(multiBoardManager);
+      uiController.populatePuzzleSelector();
+      uiController.loadPuzzle(window.DEFAULT_PUZZLE || window.PUZZLE_COLLECTION[0]);
+    });
+  </script>
+</body>
+</html>
